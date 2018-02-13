@@ -1,15 +1,19 @@
 ---
-title: Native Nodejs Development Environment Setup
+title: Native Nodejs Addons
+subtitle: Part 1
 date: 2018-01-27 14:58:21
 tags:
 ---
-# Native Nodejs Development Environment
+# Native Nodejs Addons
 
-Creating a native addon for Nodejs has been one of my first exposures into C++ and C++ projects and as such the learning curve has been relatively steep when compared to project setup for
-something such as Nodejs, or Python, or really any other language with a semi-decent package manager and build tool. This tutorial is aimed at the nodejs developer who
-has never done, or done very little C++. The method that is described below is just one way of setting up a development envirionment for node addons, it's the way that 
-I found works best for me. I implore you to adapt this to work for you. I will continue this series with more on my experience as a newcomer to C++ and native nodejs addons.
-As previously stated I am new to this technology, if you see something that is a bad practice or an anti-pattern please let me know ( with a proper solution ) and I will update this as needed.
+This is the first in a series of posts/tutorials on my experience writing a nodejs native addon. This series is aimed at the nodejs developer
+who may have expert knowledge of Nodejs/Javascript but has little to no experience extending Nodejs via native addons.
+In this series we will explore setting up a development environment(part 1), writing a simple addon using [node-addon-api](https://github.com/nodejs/node-addon-api)(part 2),
+and lastly we will discuss how to design and implement the Api or interface to our native module in Javascript(part 3).
+This is, again, a series on my experience as a newcomer to this technology, if I've accidently endorsed any bad practices or anti-patterns
+please let me know so I may address the offending code.
+
+## Part 1: The Development Environment
 
 By the end of this tutorial you should be able to start a new native nodejs project and build, run, and debug with 
 Qt Creator.
@@ -17,20 +21,19 @@ Qt Creator.
 ## Pre-reqs
 The following should be available through your native package manager.
  - If you do not already have Qt creator installed, please go install [it](https://www.qt.io/download-qt-for-application-development) now.
- - Install the latest stable version of nodejs (at the time of writing that is 8.9.3). In this tutorial I am using [nvs]()
+ - Install the latest stable version of nodejs (at the time of writing that is 8.9.3). In this tutorial I am using [nvs](https://github.com/jasongin/nvs)
  - A C/C++ compiler, gnu or clang. If your on arch you can install with `pacman -S clang`
- - CMake
- - GDB
+ - CMake `pacman -S cmake`
+ - GDB `pacman -S gdb`
 
 
 ## Project setup
 
 In this step we are going to create a new nodejs project, install required dependencies, and create a minimal CMakeLists.txt file.
-This project is using [node-addon-api](), you can swap this for [nan]() if that is your preference.
 
  - Make your project directory, cd into it and `npm init`
  - Install cmake-js, and node-addon-api `npm i -S cmake-js node-addon-api`
- - Create CMakeLists.txt file in root of project `touch CMakeLists.txt`
+ - Create a CMakeLists.txt file in root of project `touch CMakeLists.txt`
 
 In your CMakeLists.txt file add the following:
 ``` cmake
@@ -51,14 +54,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB})
 ```
 For more information on cmake-js, read the [docs](https://github.com/cmake-js/cmake-js)
 
-The above CMakeLists.txt file is defining a project
+The above CMakeLists.txt file is defining a project.
 
 ``` cmake
 project(intro)
 ```
 
-linking required header files and source files.
-Setting properties of the output, and defining the build as a shared library.
+Linking required header and source files, setting the output to have '.node' suffix, and defining our build as a shared library.
 
 ``` cmake
 target_include_directories(${PROJECT_NAME} PRIVATE  # include header files
@@ -73,8 +75,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     SUFFIX ".node") # will output an intro.node file
 ```
 
-In the CMakeLists.txt file we declared our source files as `"src/*.h"` and `"src/*.cc"`, if you haven't already go ahead and create a src directory, and add files and src/addon.cc
-It seems to also be convention to have all our javascript library code in a `lib` directory, you can add this now as well as a main.js file in the lib folder.
+In the CMakeLists.txt file we declared our source files as `"src/*.h"` and `"src/*.cc"` this is just telling CMake that all the `.cc` and `.h` files in the `/src` directory are a part of this project. It seems to be convention to have all our native code in the `src` directory and all our javascript library code in a `lib` directory. 
 
 Our project should appear as such:
 ```
@@ -88,9 +89,9 @@ project
 ```
 
 ## C++ Development Environment
-Qt will be our primary ide for writing and debugging native code. 
+Qt creator will be our primary IDE for writing and debugging native code. 
 
-Import our project
+Open Qt and import our project 
  - press `ctrl-o` (open file or project)
  - find and select the CMakeLists.txt file we just created
 
@@ -99,7 +100,7 @@ This will open the project configuration pane. Select the compiler you would lik
 
 ![Image of qt import project configuration](../../../../../images/import_configure.png)
 
-We should now be in the qt editor. This is the place we will do all of our C/C++ editing. This tutorial will not go into writing native addons. 
+We should now be in the Qt editor. This is the place we will do all of our C/C++ editing. This tutorial will not go into writing native addons. 
 
 Add the following to addon.cc
 
@@ -138,10 +139,10 @@ Select `Add Build Step` -> `Custom Process Step`.
 
 ![Image of Qt custom build step](../../../../../images/custom_build_step.png)
 
-Set the command to cmake-js executable, which will be under either your project node modules or global node modules.
+Set the command field to the cmake-js executable, which will be under either your project node modules or global node modules.
 Assuming we are using project node modules your path will look something like this: `node_modules/cmake-js/bin/cmake-js`.
-Set arguments to `build -D`. This is just saying that we want to create a debug build. Lastly set the working directory to `%{sourceDir}` 
-to set the working directory to our project root 
+Set the arguments field to `build -D`. This is just saying that we want to create a debug build. Lastly set the working directory to `%{sourceDir}` 
+to set the working directory to our project root. 
 
 ## Running
 We've completed our build configuration now all that is left is our run configuration.
@@ -149,12 +150,11 @@ On the same `Project mode` view we were in for our build configuration, select t
 
 ![Image of Qt run configuration](../../../../../images/run_configuration.png)
 
-Set the executable to the path to your nodejs executable. Here I am using nvs and my executable is locatec under .nvs directory. 
-Next set the command line arguments to your entry point javascript file, for this we will set our command line argument to `lib/index.js`.
-Lastly set the working directory to `%{sourceDir}`.
+Since we want our project to start from our Javascript code, we will set our executable to our Nodejs installation executable. Here I am using nvs and my executable is located under the .nvs directory. 
+Next set the command line arguments field to the entry point of your Javascript project/library. To run our addon.js we need to set this field to `lib/addon.js`. Lastly set the working directory to `%{sourceDir}`.
 
 ## Debugging
-We're finally here, stepping through our native node code called by our javascript code. To start debugging, set some breakpoints and hit F5. 
+To start debugging, set some breakpoints and hit F5. 
 This will initiate our custom build step, and on completion of our build will call our run configuration on the javascript file
 specified in the project mode run settings.
 
